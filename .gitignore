@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+.DS_Store
+# Зөвхөн ant-1.7-г хадгална; бусдыг scripts/download_data.py-аар татна
+data/*.csv
+!data/ant-1.7.csv
