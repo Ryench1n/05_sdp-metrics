@@ -1,2 +1,5 @@
-random_PofB20_mean,random_PofB20_sd,pooled_PofB20_probability,pooled_PofB20_density,share_random_le_probability
-0.1993,0.0259,0.1265,0.3012,0.0055
+feature_set,model,pooled_PofB20_probability,pooled_PofB20_density,random_PofB20_mean,random_PofB20_sd,share_random_le_probability
+nodes,RF,0.1636,0.3455,0.1992,0.0257,0.067
+nodes,LR,0.1455,0.297,0.1992,0.0257,0.0215
+ck,RF,0.1265,0.3012,0.1993,0.0259,0.001
+ck,LR,0.1145,0.2349,0.1993,0.0259,0.001

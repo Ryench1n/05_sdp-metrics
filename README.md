@@ -11,16 +11,25 @@
 - **RQ2.** Threshold болон ranking-ийн аргын өөрчлөлтөд decision-based ба ranking-based хэмжүүрүүд хэрхэн хариу үйлдэл үзүүлэх вэ?
 - **RQ3.** Шалгалтын төсөвтэй нөхцөлд аль хэмжүүрүүд практик үр дүнг зөв тусгаж байна вэ, PofB ба IFA хоорондын trade-off ямар байна вэ?
 
+## Өгөгдөл
+
+- **Үндсэн:** удирдагч багшийн өгсөн өгөгдлийн ant-1.7 хүснэгт (`data/advisor/ant-1.7_nodes.csv`).
+  744 класс, 165 defective (22.2%), давхардлыг хассаны дараа 62 metric.
+  Graph бүтэц (edges)-ийг ашиглахгүй. LOC багана байхгүй тул PROMISE ant-1.7-оос
+  классын бүтэн нэрээр холбосон (744/744 таарсан, `bug` утга бүгд ижил).
+  Багшийн өгөгдлийг git-д оруулаагүй — файлыг гараар `data/advisor/` руу хуулна.
+- **Харьцуулалт:** PROMISE ant-1.7-ийн 20 CK metric (`data/ant-1.7.csv`).
+
 ## Бүтэц
 
 ```
-data/            ant-1.7.csv (үндсэн сан) ба эх сурвалжийн тайлбар
+data/            ant-1.7.csv (PROMISE), advisor/ (багшийн өгөгдөл, git-д ороогүй)
 scripts/         download_data.py — бусад 35 PROMISE санг татах
 src/metrics.py   10 хэмжүүр: Accuracy, Precision, Recall, F1, MCC, G-mean,
                  ROC-AUC, PR-AUC, PofB20, IFA
-src/data.py      өгөгдөл ачаалах
-experiments/     feasibility.py — threshold × ranking invariance туршилт
-tests/           unit test ба invariance test
+src/data.py      load_nodes() — багшийн өгөгдөл + LOC; load_ck() — PROMISE CK
+experiments/     feasibility.py — 2 загвар × threshold × ranking invariance туршилт
+tests/           unit, invariance, data loader test
 results/         туршилтын гаралт (CSV)
 ```
 
@@ -31,24 +40,24 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python -m pytest -q                # 8 test
-python experiments/feasibility.py  # results/feasibility.csv үүснэ
+python -m pytest -q                # 9 test
+python experiments/feasibility.py  # results/feasibility_*.csv үүснэ
 ```
 
-## Одоогийн үр дүн (feasibility)
+## Одоогийн үр дүн (feasibility, үндсэн өгөгдөл)
 
-Random Forest, stratified 10-fold CV, `random_state=42`:
+Stratified 10-fold CV, `random_state=42`, threshold 0.5:
 
-| Threshold | Ranking | F1 | MCC | ROC-AUC | PR-AUC | PofB20 | IFA |
+| Model | Ranking | F1 | MCC | ROC-AUC | PR-AUC | PofB20 | IFA |
 |---|---|---|---|---|---|---|---|
-| 0.5 | probability | 0.552 | 0.464 | 0.843 | 0.634 | 0.114 | 0.4 |
-| 0.5 | density | 0.552 | 0.464 | 0.535 | 0.258 | 0.282 | 5.2 |
-| 0.3 | probability | 0.597 | 0.475 | 0.843 | 0.634 | 0.114 | 0.4 |
-| 0.3 | density | 0.597 | 0.475 | 0.535 | 0.258 | 0.282 | 5.2 |
+| RF | probability | 0.561 | 0.485 | 0.834 | 0.640 | 0.140 | 0.0 |
+| RF | density | 0.561 | 0.485 | 0.525 | 0.232 | 0.320 | 6.9 |
+| LR | probability | 0.469 | 0.380 | 0.787 | 0.571 | 0.128 | 0.3 |
+| LR | density | 0.469 | 0.380 | 0.383 | 0.183 | 0.272 | 10.7 |
 
 - Threshold-ийг өөрчлөхөд зөвхөн decision-based хэмжүүрүүд өөрчлөгдөнө.
 - Ranking-ийн аргыг өөрчлөхөд зөвхөн ranking-based хэмжүүрүүд өөрчлөгдөнө; ROC-AUC буурч PofB20 өснө.
-- Probability ranking-ийн PofB20 (pooled 0.127) нь санамсаргүй ranking-ээс (0.199 ± 0.026) муу.
+- Энэ зүй тогтол хоёр загвар, хоёр feature set (багшийн 62 metric, PROMISE 20 CK) дөрвүүлэн дээр давтагдсан.
 
 ## Хэмжүүрийн тэмдэглэл
 
