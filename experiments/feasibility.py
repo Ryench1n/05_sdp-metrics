@@ -45,8 +45,8 @@ def run(feature_set):
             prob[te] = make().fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
         density = prob / np.maximum(loc, 1)
         pooled.append({"feature_set": feature_set, "model": model_name,
-                       "pooled_PofB20_probability": round(pofb(y, prob, loc, 0.2), 4),
-                       "pooled_PofB20_density": round(pofb(y, density, loc, 0.2), 4)})
+                       "pooled_PofB20_probability": pofb(y, prob, loc, 0.2),
+                       "pooled_PofB20_density": pofb(y, density, loc, 0.2)})
         for t in THRESHOLDS:
             for r in RANKINGS:
                 per_fold = []
@@ -67,7 +67,10 @@ def run(feature_set):
     for row in pooled:
         row["random_PofB20_mean"] = round(rand.mean(), 4)
         row["random_PofB20_sd"] = round(rand.std(), 4)
+        # харьцуулалтыг бөөрөнхийлөөгүй утгаар хийнэ
         row["share_random_le_probability"] = round((rand <= row["pooled_PofB20_probability"]).mean(), 4)
+        row["pooled_PofB20_probability"] = round(row["pooled_PofB20_probability"], 4)
+        row["pooled_PofB20_density"] = round(row["pooled_PofB20_density"], 4)
     return pooled
 
 
