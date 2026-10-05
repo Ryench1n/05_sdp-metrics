@@ -83,3 +83,17 @@ def test_ranking_change_leaves_decision_metrics_unchanged(toy):
     for m in DECISION_METRICS:
         assert a[m] == pytest.approx(b[m]), m
     assert any(a[m] != pytest.approx(b[m]) for m in RANKING_METRICS)
+
+
+# --- Data loader ------------------------------------------------------------
+
+def test_nodes_loader_joins_loc_and_excludes_targets():
+    from data import ADVISOR_DIR, load_nodes
+    if not (ADVISOR_DIR / "ant-1.7_nodes.csv").exists():
+        pytest.skip("advisor data not present")
+    X, y, loc, features, df = load_nodes("ant-1.7")
+    assert X.shape == (744, len(features))
+    assert y.sum() == 165
+    assert not np.isnan(loc).any()
+    assert not {"bug", "label", "loc"} & set(features)
+    assert (y == (df["bug"] > 0)).all()
