@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "results" / "figures"
 OUT.mkdir(parents=True, exist_ok=True)
 CV = ROOT / "results" / "cv"
+sys.path.insert(0, str(ROOT / "src"))
+from data import DATASETS, load  # noqa: E402
 
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
@@ -26,7 +28,7 @@ plt.rcParams.update({
 
 
 def effort_curve():
-    oof = pd.read_csv(CV / "oof.csv.gz")
+    oof = pd.read_csv(CV / "ant-1.7" / "oof.csv.gz")
     d = oof[(oof.model == "RF") & (oof.repeat == 0)]
     y, e, p = d.y.to_numpy(), d.effort.to_numpy(), d.prob.to_numpy()
     e1 = np.maximum(e, 1)
@@ -49,38 +51,39 @@ def effort_curve():
     x, f = curve(p / e1)
     ax.plot(x, f, color=ORANGE, lw=2, label="RF, density ranking")
     ax.set_xlim(0, 1); ax.set_ylim(0, 1.01)
-    ax.set_xlabel("Шалгасан effort-ийн хувь (хуримтлагдсан CSM / ΣCSM)")
+    ax.set_xlabel("Шалгасан кодын хувь (хуримтлагдсан LOC / ΣLOC)")
     ax.set_ylabel("Олдсон defective модулийн хувь")
     ax.legend(loc="lower right", fontsize=9)
     fig.savefig(OUT / "effort_curve.pdf"); plt.close(fig)
 
 
 def ranking_dumbbell():
-    s = pd.read_csv(CV / "summary.csv", header=[0, 1], index_col=[0, 1]).xs("mean", axis=1, level=1)
-    metrics = ["ROC-AUC", "PR-AUC", "PofB20", "IFA"]
-    fig, axes = plt.subplots(1, 4, figsize=(7.6, 2.6), sharey=True)
-    ypos = np.arange(len(MODELS))[::-1]
+    s = pd.read_csv(ROOT / "results" / "pooled" / "summary_long.csv", index_col=[0, 1, 2])
+    metrics = ["ROC-AUC", "PofB20", "IFA"]
+    labels, keys = [], []
+    for d in DATASETS:
+        for mm in MODELS:
+            labels.append(f"{d} {mm}"); keys.append((d, mm))
+    fig, axes = plt.subplots(1, 3, figsize=(7.6, 6.4), sharey=True)
+    ypos = np.arange(len(keys))[::-1]
     for ax, m in zip(axes, metrics):
-        pv = [s.loc[(mm, "probability"), m] for mm in MODELS]
-        dv = [s.loc[(mm, "density"), m] for mm in MODELS]
-        for yy, a, b in zip(ypos, pv, dv):
-            ax.plot([a, b], [yy, yy], color=GRID, lw=2.5, zorder=1)
-        ax.scatter(pv, ypos, s=42, color=BLUE, marker="o", zorder=2,
-                   edgecolor="white", linewidth=1, label="probability")
-        ax.scatter(dv, ypos, s=46, color=ORANGE, marker="s", zorder=2,
-                   edgecolor="white", linewidth=1, label="density")
+        pv = [s.loc[(d, mm, "probability"), m] for d, mm in keys]
+        dv = [s.loc[(d, mm, "density"), m] for d, mm in keys]
+        for yy, a_, b_ in zip(ypos, pv, dv):
+            ax.plot([a_, b_], [yy, yy], color=GRID, lw=2.2, zorder=1)
+        ax.scatter(pv, ypos, s=26, color=BLUE, marker="o", zorder=2, edgecolor="white", linewidth=0.8, label="probability")
+        ax.scatter(dv, ypos, s=28, color=ORANGE, marker="s", zorder=2, edgecolor="white", linewidth=0.8, label="density")
+        for k in range(1, len(DATASETS)):
+            ax.axhline(len(keys) - 4 * k - 0.5, color=MUTED, lw=0.5, ls=":")
         ax.set_title(m + (" (бага нь сайн)" if m == "IFA" else ""), fontsize=10, color=INK)
         ax.grid(axis="y", visible=False)
-        lo, hi = min(pv + dv), max(pv + dv)
-        pad = (hi - lo) * 0.15
-        ax.set_xlim(lo - pad, hi + pad)
-    axes[0].set_yticks(ypos, MODELS)
-    axes[0].legend(loc="upper center", bbox_to_anchor=(2.3, -0.18), ncol=2, fontsize=9)
+    axes[0].set_yticks(ypos, labels, fontsize=8)
+    axes[1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.06), ncol=2, fontsize=9)
     fig.savefig(OUT / "ranking_dumbbell.pdf"); plt.close(fig)
 
 
 def bootstrap_forest():
-    d = pd.read_csv(CV / "bootstrap_diff.csv")
+    d = pd.read_csv(CV / "ant-1.7" / "bootstrap_diff.csv")
     d = d[(d.comparison == "RF − XGB") & (d.metric != "IFA")]
     order = ["Accuracy", "Precision", "Recall", "F1", "MCC", "G-mean",
              "ROC-AUC", "PR-AUC", "PofB10", "PofB20", "PofB50"]
@@ -99,19 +102,28 @@ def bootstrap_forest():
 
 
 def size_box():
-    df = pd.read_csv(ROOT / "data" / "advisor" / "ant-1.7_nodes.csv")
-    fig, ax = plt.subplots(figsize=(5.0, 2.4))
-    data = [df.loc[df.label == 0, "CSM"], df.loc[df.label == 1, "CSM"]]
-    bp = ax.boxplot(data, orientation="horizontal", widths=0.5, patch_artist=True, showfliers=True,
-                    flierprops=dict(marker="o", markersize=3, markerfacecolor=MUTED,
+    fig, ax = plt.subplots(figsize=(6.0, 3.4))
+    pos, ticks, data, cols = [], [], [], []
+    for i, d in enumerate(DATASETS):
+        _, y, loc, _, _ = load(d)
+        for j, (lab, c) in enumerate([(0, BLUE), (1, ORANGE)]):
+            data.append(np.maximum(loc[y == lab], 1)); pos.append(i * 3 + j); cols.append(c)
+        ticks.append(i * 3 + 0.5)
+    bp = ax.boxplot(data, positions=pos, widths=0.7, patch_artist=True,
+                    flierprops=dict(marker="o", markersize=2.5, markerfacecolor=MUTED,
                                     markeredgecolor="none", alpha=0.5),
-                    medianprops=dict(color=INK, lw=1.5))
-    for patch, c in zip(bp["boxes"], [BLUE, ORANGE]):
+                    medianprops=dict(color=INK, lw=1.4))
+    for patch, c in zip(bp["boxes"], cols):
         patch.set_facecolor(c); patch.set_alpha(0.35); patch.set_edgecolor(c)
-    ax.set_yticks([1, 2], ["Clean (579)", "Defective (165)"])
-    ax.set_xlabel("CSM (method + attribute-ын тоо)")
-    ax.grid(axis="y", visible=False)
-    fig.savefig(OUT / "csm_box.pdf"); plt.close(fig)
+    ax.set_yscale("log")
+    ax.set_xticks(ticks, DATASETS)
+    ax.set_ylabel("LOC (логарифм шкал)")
+    ax.grid(axis="x", visible=False)
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(facecolor=BLUE, alpha=0.35, edgecolor=BLUE, label="Clean"),
+                       Patch(facecolor=ORANGE, alpha=0.35, edgecolor=ORANGE, label="Defective")],
+              loc="upper right", fontsize=9)
+    fig.savefig(OUT / "loc_box.pdf"); plt.close(fig)
 
 
 if __name__ == "__main__":

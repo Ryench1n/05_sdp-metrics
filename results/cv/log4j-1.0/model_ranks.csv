@@ -1,0 +1,13 @@
+,LR,RF,ET,XGB
+Accuracy,1,2,3,4
+Precision,1,2,3,4
+Recall,3,2,1,4
+F1,1,2,3,4
+MCC,1,2,3,4
+G-mean,1,2,3,4
+ROC-AUC,3,1,2,4
+PR-AUC,1,2,3,4
+PofB10,1,4,3,2
+PofB20,1,3,4,2
+PofB50,1,3,2,4
+IFA,1,2,3,4

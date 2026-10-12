@@ -1,0 +1,6 @@
+dataset,wilcoxon_significant,bootstrap_excludes_zero,total,bootstrap_metrics
+ant-1.7,50,10,72,"Accuracy, G-mean, PR-AUC, Precision, ROC-AUC, Recall"
+camel-1.6,47,16,72,"Accuracy, F1, G-mean, PofB10, PofB20, PofB50, Recall"
+jedit-4.0,37,0,72,
+log4j-1.0,33,6,72,"PR-AUC, Precision, ROC-AUC"
+xalan-2.6,42,31,72,"Accuracy, F1, G-mean, MCC, PR-AUC, PofB10, PofB20, PofB50, ROC-AUC, Recall"

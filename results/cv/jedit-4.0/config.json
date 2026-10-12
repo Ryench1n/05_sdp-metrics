@@ -1,0 +1,35 @@
+{
+  "started": "2026-10-12T08:27:59",
+  "dataset": "jedit-4.0",
+  "data": "PROMISE CK (Jureczko & Madeyski)",
+  "effort": "loc",
+  "n_modules": 306,
+  "n_defective": 75,
+  "n_features": 20,
+  "repeats": 10,
+  "folds": 10,
+  "seed": 42,
+  "split": "RepeatedStratifiedKFold(random_state=seed)",
+  "model_seed": "seed + repeat",
+  "models": [
+    "LR",
+    "RF",
+    "ET",
+    "XGB"
+  ],
+  "threshold": 0.5,
+  "rankings": {
+    "probability": "p",
+    "density": "p / max(loc, 1)"
+  },
+  "versions": {
+    "python": "3.13.16",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1"
+  },
+  "git_commit": "18afcda",
+  "finished": "2026-10-12T08:30:13",
+  "runtime_seconds": 133.2
+}
