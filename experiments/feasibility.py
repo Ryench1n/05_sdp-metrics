@@ -1,11 +1,14 @@
-"""Боломжийн шалгалт: threshold болон ranking-ийн аргын өөрчлөлтөд хэмжүүрүүд
-хэрхэн хариу үйлдэл үзүүлэхийг ant-1.7 дээр, хоёр загвараар шалгана.
+"""Боломжийн шалгалт ба invariance туршилт.
+
+1. Threshold (0.5, 0.3) болон ranking-ийн арга (probability, density)-ийг
+   өөрчлөхөд хэмжүүрүүд хэрхэн хариу үйлдэл үзүүлэхийг RF, LR загвараар шалгана.
+2. Machine learning ашиглахгүй хоёр baseline-тай харьцуулна:
+   dummy classifier (бүгдийг clean гэж таамаглана) ба size-only baseline
+   (модулийг зөвхөн CSM-ээр эрэмбэлнэ).
+3. Санамсаргүй ranking-ийн PofB20 тархалтыг (2000 permutation) гаргана.
 
 Ажиллуулах:  python experiments/feasibility.py
-Гаралт:      results/feasibility_<feature_set>.csv, results/random_baseline.csv
-
-"nodes" feature set-д багшийн өгөгдөл data/advisor/ant-1.7_nodes.csv хэрэгтэй.
-Файл байхгүй бол зөвхөн "ck" feature set дээр ажиллана.
+Гаралт:      results/feasibility.csv, results/baselines.csv, results/random_baseline.csv
 """
 import sys
 from pathlib import Path
@@ -20,8 +23,8 @@ from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from data import ADVISOR_DIR, load      # noqa: E402
-from metrics import evaluate, pofb      # noqa: E402
+from data import load                   # noqa: E402
+from metrics import RANKING_METRICS, evaluate, pofb  # noqa: E402
 
 SEED = 42
 N_SPLITS = 10
@@ -35,56 +38,65 @@ MODELS = {
 }
 
 
-def run(feature_set):
-    X, y, loc, features, _ = load("ant-1.7", feature_set)
+def fold_mean(y, folds, pred, score, effort):
+    rows = [evaluate(y[te], pred[te], score[te], effort[te]) for _, te in folds]
+    return pd.DataFrame(rows).mean().round(4).to_dict()
+
+
+def main():
+    out = ROOT / "results"
+    out.mkdir(exist_ok=True)
+    X, y, effort, features, _ = load("ant-1.7")
     folds = list(StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=SEED).split(X, y))
+
     rows, pooled = [], []
-    for model_name, make in MODELS.items():
+    for name, make in MODELS.items():
         prob = np.zeros(len(y))
         for tr, te in folds:
             prob[te] = make().fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
-        density = prob / np.maximum(loc, 1)
-        pooled.append({"feature_set": feature_set, "model": model_name,
-                       "pooled_PofB20_probability": pofb(y, prob, loc, 0.2),
-                       "pooled_PofB20_density": pofb(y, density, loc, 0.2)})
+        density = prob / np.maximum(effort, 1)
+        pooled.append({"model": name,
+                       "pooled_PofB20_probability": pofb(y, prob, effort, 0.2),
+                       "pooled_PofB20_density": pofb(y, density, effort, 0.2)})
         for t in THRESHOLDS:
             for r in RANKINGS:
-                per_fold = []
-                for _, te in folds:
-                    p = prob[te]
-                    score = p if r == "probability" else p / np.maximum(loc[te], 1)
-                    per_fold.append(evaluate(y[te], (p >= t).astype(int), score, loc[te]))
-                mean = pd.DataFrame(per_fold).mean().round(4).to_dict()
-                rows.append({"model": model_name, "threshold": t, "ranking": r, **mean})
-    print(f"\n=== feature set: {feature_set}  ({len(features)} features, N={len(y)}, K={y.sum()}) ===")
+                score = prob if r == "probability" else density
+                rows.append({"model": name, "threshold": t, "ranking": r,
+                             **fold_mean(y, folds, (prob >= t).astype(int), score, effort)})
     res = pd.DataFrame(rows)
-    print(res.to_string(index=False))
-    res.to_csv(ROOT / "results" / f"feasibility_{feature_set}.csv", index=False)
+    res.to_csv(out / "feasibility.csv", index=False)
 
-    # Санамсаргүй ranking-ийн PofB20 тархалт (тухайн өгөгдөл дээр)
+    # Baseline-ууд: dummy (бүгд clean) ба size-only (CSM-ээр эрэмбэлж, медианаас дээшийг defective)
+    size_pred = (effort > np.median(effort)).astype(int)
+    dummy = fold_mean(y, folds, np.zeros(len(y), int), np.zeros(len(y)), effort)
+    # Dummy бүх модульд ижил score өгдөг тул ranking тодорхойгүй: ranking хэмжүүрийг тооцохгүй
+    dummy.update({m: np.nan for m in RANKING_METRICS})
+    base = pd.DataFrame([
+        {"baseline": "dummy (all clean)", **dummy},
+        {"baseline": "size-only (CSM)",
+         **fold_mean(y, folds, size_pred, effort, effort)},
+    ])
+    base.to_csv(out / "baselines.csv", index=False)
+
     rng = np.random.default_rng(0)
-    rand = np.array([pofb(y, rng.random(len(y)), loc, 0.2) for _ in range(N_PERMUTATIONS)])
+    rand = np.array([pofb(y, rng.random(len(y)), effort, 0.2) for _ in range(N_PERMUTATIONS)])
     for row in pooled:
         row["random_PofB20_mean"] = round(rand.mean(), 4)
         row["random_PofB20_sd"] = round(rand.std(), 4)
         # харьцуулалтыг бөөрөнхийлөөгүй утгаар хийнэ
         row["share_random_le_probability"] = round((rand <= row["pooled_PofB20_probability"]).mean(), 4)
+        row["share_random_ge_density"] = round((rand >= row["pooled_PofB20_density"]).mean(), 4)
         row["pooled_PofB20_probability"] = round(row["pooled_PofB20_probability"], 4)
         row["pooled_PofB20_density"] = round(row["pooled_PofB20_density"], 4)
-    return pooled
+    pd.DataFrame(pooled).to_csv(out / "random_baseline.csv", index=False)
 
-
-def main():
-    (ROOT / "results").mkdir(exist_ok=True)
     pd.set_option("display.width", 220)
-    sets = ["nodes", "ck"] if (ADVISOR_DIR / "ant-1.7_nodes.csv").exists() else ["ck"]
-    pooled = []
-    for fs in sets:
-        pooled += run(fs)
-    base = pd.DataFrame(pooled)
-    base.to_csv(ROOT / "results" / "random_baseline.csv", index=False)
-    print("\n=== pooled PofB20 vs random ranking ===")
+    print(f"=== {len(features)} features, N={len(y)}, K={y.sum()} ===")
+    print(res.to_string(index=False))
+    print("\n=== baselines ===")
     print(base.to_string(index=False))
+    print("\n=== pooled PofB20 vs random ranking ===")
+    print(pd.DataFrame(pooled).to_string(index=False))
 
 
 if __name__ == "__main__":

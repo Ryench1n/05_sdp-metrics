@@ -4,8 +4,9 @@
   * decision-based — threshold-оор гаргасан хоёртын шийдвэрээс (confusion matrix)
   * ranking-based  — score-оор эрэмбэлсэн дарааллаас (threshold шаардахгүй)
 
-PofB10, PofB20, PofB50 нь LOC-ийг effort-ийн төлөөлөл болгон ашигладаг хэмжүүрүүд
-(кодын 10, 20, 50 хувийг шалгах төсөв).
+PofB10, PofB20, PofB50 нь шалгах хүчин чармайлт (effort)-ийн 10, 20, 50 хувийн
+төсөвт олдох defect-ийн хувь. Effort-ийн төлөөллийг дуудагч тал өгнө
+(энэ судалгаанд классын хэмжээ CSM).
 """
 import numpy as np
 from sklearn.metrics import (
@@ -27,16 +28,16 @@ def g_mean(y_true, y_pred):
     return float(np.sqrt(tpr * tnr))
 
 
-def pofb(y_true, score, loc, budget=0.20):
-    """Proportion of defects found when inspecting `budget` share of total LOC.
+def pofb(y_true, score, effort, budget=0.20):
+    """Proportion of defects found when inspecting `budget` share of total effort.
 
-    Модулиудыг score-оор буурахаар эрэмбэлж, хуримтлагдсан LOC нь
-    budget * ΣLOC-ээс хэтрэхгүй модулиудыг шалгасан гэж үзнэ.
+    Модулиудыг score-оор буурахаар эрэмбэлж, хуримтлагдсан effort нь
+    budget * Σeffort-оос хэтрэхгүй модулиудыг шалгасан гэж үзнэ.
     Тэнцүү score-той модулиудын дараалал тогтвортой (mergesort).
     """
-    y_true, score, loc = (np.asarray(a) for a in (y_true, score, loc))
+    y_true, score, effort = (np.asarray(a) for a in (y_true, score, effort))
     order = np.argsort(-score, kind="mergesort")
-    within = np.cumsum(loc[order]) <= budget * loc.sum()
+    within = np.cumsum(effort[order]) <= budget * effort.sum()
     total = y_true.sum()
     return float(y_true[order][within].sum() / total) if total else 0.0
 
@@ -49,13 +50,13 @@ def ifa(y_true, score):
     return int(hits[0]) if hits.size else int(ranked.size)
 
 
-def evaluate(y_true, y_pred, score, loc):
+def evaluate(y_true, y_pred, score, effort):
     """Бүх хэмжүүрийг нэг дор тооцоолно.
 
     y_true : бодит шошго (0/1)
     y_pred : хоёртын шийдвэр (decision-based хэмжүүрт)
     score  : ranking-д ашиглах оноо (ranking-based хэмжүүрт)
-    loc    : модуль бүрийн lines of code
+    effort : модуль бүрийг шалгах хүчин чармайлтын төлөөлөл (CSM)
     """
     return {
         "Accuracy": accuracy_score(y_true, y_pred),
@@ -66,7 +67,7 @@ def evaluate(y_true, y_pred, score, loc):
         "G-mean": g_mean(y_true, y_pred),
         "ROC-AUC": roc_auc_score(y_true, score),
         "PR-AUC": average_precision_score(y_true, score),
-        **{name: pofb(y_true, score, loc, b) for name, b in POFB_BUDGETS.items()},
+        **{name: pofb(y_true, score, effort, b) for name, b in POFB_BUDGETS.items()},
         "IFA": ifa(y_true, score),
     }
 

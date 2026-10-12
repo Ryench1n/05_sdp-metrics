@@ -5,10 +5,9 @@ density) бүх хэмжүүрийг тооцоод, туршилтын тохи
 out-of-fold prediction-ийг автоматаар бүртгэнэ.
 
 Ажиллуулах:
-    python experiments/run_cv.py                    # багшийн өгөгдөл (nodes)
-    python experiments/run_cv.py --feature-set ck    # PROMISE CK metric
+    python experiments/run_cv.py
 
-Гаралт: results/cv_<feature_set>/
+Гаралт: results/cv/
     config.json   — тохиргоо, өгөгдлийн мэдээлэл, сангийн хувилбарууд, commit
     folds.csv     — fold бүрийн хэмжүүрүүд (repeat, fold, model, ranking)
     oof.csv.gz    — repeat бүрийн out-of-fold probability
@@ -30,7 +29,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from data import load                      # noqa: E402
+from data import EFFORT, load              # noqa: E402
 from metrics import evaluate               # noqa: E402
 from models import MODEL_NAMES, make_model  # noqa: E402
 
@@ -47,26 +46,25 @@ def git_commit():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--feature-set", default="nodes", choices=["nodes", "ck"])
     ap.add_argument("--repeats", type=int, default=10)
     ap.add_argument("--folds", type=int, default=10)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
-    X, y, loc, features, frame = load("ant-1.7", args.feature_set)
-    out = ROOT / "results" / f"cv_{args.feature_set}"
+    X, y, effort, features, frame = load("ant-1.7")
+    out = ROOT / "results" / "cv"
     out.mkdir(parents=True, exist_ok=True)
 
     config = {
         "started": datetime.now().isoformat(timespec="seconds"),
         "dataset": "ant-1.7",
-        "feature_set": args.feature_set,
+        "data": "advisor nodes (tabular only)", "effort": EFFORT,
         "n_modules": int(len(y)), "n_defective": int(y.sum()), "n_features": len(features),
         "repeats": args.repeats, "folds": args.folds, "seed": args.seed,
         "split": "RepeatedStratifiedKFold(random_state=seed)",
         "model_seed": "seed + repeat",
         "models": MODEL_NAMES, "threshold": THRESHOLD,
-        "rankings": {"probability": "p", "density": "p / max(LOC, 1)"},
+        "rankings": {"probability": "p", "density": f"p / max({EFFORT}, 1)"},
         "versions": {"python": platform.python_version(), "numpy": np.__version__,
                      "pandas": pd.__version__, "scikit-learn": sklearn.__version__,
                      "xgboost": xgboost.__version__},
@@ -85,8 +83,8 @@ def main():
             p = model.predict_proba(X[te])[:, 1]
             probs[m][r, te] = p
             pred = (p >= THRESHOLD).astype(int)
-            for ranking, score in (("probability", p), ("density", p / np.maximum(loc[te], 1))):
-                met = evaluate(y[te], pred, score, loc[te])
+            for ranking, score in (("probability", p), ("density", p / np.maximum(effort[te], 1))):
+                met = evaluate(y[te], pred, score, effort[te])
                 rows.append({"repeat": r, "fold": f, "model": m, "ranking": ranking,
                              "n_test": len(te), "k_test": int(y[te].sum()), **met})
         if f == args.folds - 1:
@@ -95,7 +93,7 @@ def main():
     for m in MODEL_NAMES:
         for r in range(args.repeats):
             oof.append(pd.DataFrame({"repeat": r, "module": np.arange(len(y)), "model": m,
-                                     "y": y, "loc": loc, "prob": probs[m][r]}))
+                                     "y": y, "effort": effort, "prob": probs[m][r]}))
 
     pd.DataFrame(rows).to_csv(out / "folds.csv", index=False)
     pd.concat(oof).to_csv(out / "oof.csv.gz", index=False)

@@ -12,19 +12,19 @@ from metrics import evaluate, g_mean, ifa, pofb, DECISION_METRICS, RANKING_METRI
 
 def test_pofb_hand_computed():
     # 5 модуль, нийт 1000 мөр, 20% төсөв = 200 мөр
-    loc = np.array([100, 100, 400, 300, 100])
+    effort = np.array([100, 100, 400, 300, 100])
     score = np.array([0.9, 0.8, 0.7, 0.6, 0.5])
     y = np.array([0, 1, 1, 1, 0])
     # M0(100, clean) + M1(100, defective) = 200 -> төсөв дүүрэв; 1/3 defect
-    assert pofb(y, score, loc, 0.20) == pytest.approx(1 / 3)
+    assert pofb(y, score, effort, 0.20) == pytest.approx(1 / 3)
 
 
 def test_pofb_large_module_eats_budget():
-    loc = np.array([100, 100, 400, 300, 100])
+    effort = np.array([100, 100, 400, 300, 100])
     y = np.array([0, 1, 1, 1, 0])
     score = np.array([0.1, 0.9, 0.8, 0.7, 0.2])
     # M1(100) дараа нь M2(400) -> 500 > 200 тул зөвхөн M1 багтана
-    assert pofb(y, score, loc, 0.20) == pytest.approx(1 / 3)
+    assert pofb(y, score, effort, 0.20) == pytest.approx(1 / 3)
 
 
 def test_pofb_full_budget_finds_everything():
@@ -62,24 +62,24 @@ def toy():
     n = 200
     y = (rng.random(n) < 0.25).astype(int)
     prob = np.clip(0.3 * y + rng.random(n) * 0.7, 0, 1)
-    loc = rng.integers(20, 2000, n).astype(float)
-    return y, prob, loc
+    effort = rng.integers(20, 2000, n).astype(float)
+    return y, prob, effort
 
 
 def test_threshold_change_leaves_ranking_metrics_unchanged(toy):
-    y, prob, loc = toy
-    a = evaluate(y, (prob >= 0.5).astype(int), prob, loc)
-    b = evaluate(y, (prob >= 0.3).astype(int), prob, loc)
+    y, prob, effort = toy
+    a = evaluate(y, (prob >= 0.5).astype(int), prob, effort)
+    b = evaluate(y, (prob >= 0.3).astype(int), prob, effort)
     for m in RANKING_METRICS:
         assert a[m] == pytest.approx(b[m]), m
     assert any(a[m] != pytest.approx(b[m]) for m in DECISION_METRICS)
 
 
 def test_ranking_change_leaves_decision_metrics_unchanged(toy):
-    y, prob, loc = toy
+    y, prob, effort = toy
     pred = (prob >= 0.5).astype(int)
-    a = evaluate(y, pred, prob, loc)
-    b = evaluate(y, pred, prob / loc, loc)
+    a = evaluate(y, pred, prob, effort)
+    b = evaluate(y, pred, prob / effort, effort)
     for m in DECISION_METRICS:
         assert a[m] == pytest.approx(b[m]), m
     assert any(a[m] != pytest.approx(b[m]) for m in RANKING_METRICS)
@@ -87,23 +87,23 @@ def test_ranking_change_leaves_decision_metrics_unchanged(toy):
 
 # --- Data loader ------------------------------------------------------------
 
-def test_nodes_loader_joins_loc_and_excludes_targets():
-    from data import ADVISOR_DIR, load_nodes
+def test_loader_uses_csm_effort_and_excludes_targets():
+    from data import ADVISOR_DIR, load
     if not (ADVISOR_DIR / "ant-1.7_nodes.csv").exists():
         pytest.skip("advisor data not present")
-    X, y, loc, features, df = load_nodes("ant-1.7")
-    assert X.shape == (744, len(features))
+    X, y, effort, features, df = load("ant-1.7")
+    assert X.shape == (744, 62)
     assert y.sum() == 165
-    assert not np.isnan(loc).any()
-    assert not {"bug", "label", "loc"} & set(features)
+    assert (effort == df["NM"] + df["NA"]).all()
+    assert not {"bug", "label"} & set(features)
     assert (y == (df["bug"] > 0)).all()
 
 
 # --- PofB budgets -----------------------------------------------------------
 
 def test_pofb_budgets_are_monotonic(toy):
-    y, prob, loc = toy
-    r = evaluate(y, (prob >= 0.5).astype(int), prob, loc)
+    y, prob, effort = toy
+    r = evaluate(y, (prob >= 0.5).astype(int), prob, effort)
     assert r["PofB10"] <= r["PofB20"] <= r["PofB50"]
 
 
