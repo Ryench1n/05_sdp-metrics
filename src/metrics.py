@@ -4,7 +4,8 @@
   * decision-based — threshold-оор гаргасан хоёртын шийдвэрээс (confusion matrix)
   * ranking-based  — score-оор эрэмбэлсэн дарааллаас (threshold шаардахгүй)
 
-PofB20 нь LOC-ийг effort-ийн төлөөлөл болгон ашигладаг цорын ганц хэмжүүр.
+PofB10, PofB20, PofB50 нь LOC-ийг effort-ийн төлөөлөл болгон ашигладаг хэмжүүрүүд
+(кодын 10, 20, 50 хувийг шалгах төсөв).
 """
 import numpy as np
 from sklearn.metrics import (
@@ -14,7 +15,8 @@ from sklearn.metrics import (
 )
 
 DECISION_METRICS = ["Accuracy", "Precision", "Recall", "F1", "MCC", "G-mean"]
-RANKING_METRICS = ["ROC-AUC", "PR-AUC", "PofB20", "IFA"]
+RANKING_METRICS = ["ROC-AUC", "PR-AUC", "PofB10", "PofB20", "PofB50", "IFA"]
+POFB_BUDGETS = {"PofB10": 0.10, "PofB20": 0.20, "PofB50": 0.50}
 
 
 def g_mean(y_true, y_pred):
@@ -64,7 +66,7 @@ def evaluate(y_true, y_pred, score, loc):
         "G-mean": g_mean(y_true, y_pred),
         "ROC-AUC": roc_auc_score(y_true, score),
         "PR-AUC": average_precision_score(y_true, score),
-        "PofB20": pofb(y_true, score, loc, 0.20),
+        **{name: pofb(y_true, score, loc, b) for name, b in POFB_BUDGETS.items()},
         "IFA": ifa(y_true, score),
     }
 
