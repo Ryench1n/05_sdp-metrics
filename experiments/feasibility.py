@@ -64,7 +64,7 @@ def run(dataset):
                              **fold_mean(y, folds, (prob >= t).astype(int), score, effort)})
     res = pd.DataFrame(rows)
 
-    # Baseline-ууд: dummy (бүгд clean) ба size-only (CSM-ээр эрэмбэлж, медианаас дээшийг defective)
+    # Baseline-ууд: dummy (бүгд clean) ба size-only (LOC-оор эрэмбэлж, медианаас дээшийг defective)
     size_pred = (effort > np.median(effort)).astype(int)
     dummy = fold_mean(y, folds, np.zeros(len(y), int), np.zeros(len(y)), effort)
     # Dummy бүх модульд ижил score өгдөг тул ranking тодорхойгүй: ranking хэмжүүрийг тооцохгүй

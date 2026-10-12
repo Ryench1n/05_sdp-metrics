@@ -6,7 +6,7 @@
 
 PofB10, PofB20, PofB50 нь шалгах хүчин чармайлт (effort)-ийн 10, 20, 50 хувийн
 төсөвт олдох defect-ийн хувь. Effort-ийн төлөөллийг дуудагч тал өгнө
-(энэ судалгаанд классын хэмжээ CSM).
+(энэ судалгаанд кодын мөрийн тоо LOC).
 """
 import numpy as np
 from sklearn.metrics import (
@@ -56,7 +56,7 @@ def evaluate(y_true, y_pred, score, effort):
     y_true : бодит шошго (0/1)
     y_pred : хоёртын шийдвэр (decision-based хэмжүүрт)
     score  : ranking-д ашиглах оноо (ranking-based хэмжүүрт)
-    effort : модуль бүрийг шалгах хүчин чармайлтын төлөөлөл (CSM)
+    effort : модуль бүрийг шалгах хүчин чармайлтын төлөөлөл (LOC)
     """
     return {
         "Accuracy": accuracy_score(y_true, y_pred),

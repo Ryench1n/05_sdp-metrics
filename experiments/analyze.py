@@ -169,7 +169,7 @@ def repeat_winners(folds, models):
 
 
 def size_correlation(oof, models):
-    """Out-of-fold probability ба effort (CSM)-ийн Spearman correlation, repeat-ийн дундаж."""
+    """Out-of-fold probability ба effort (LOC)-ийн Spearman correlation, repeat-ийн дундаж."""
     from scipy.stats import spearmanr
     rows = {}
     for m in models:
