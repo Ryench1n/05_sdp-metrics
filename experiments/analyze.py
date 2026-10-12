@@ -168,6 +168,16 @@ def repeat_winners(folds, models):
     return counts
 
 
+def size_correlation(oof, models):
+    """Out-of-fold probability ба effort (CSM)-ийн Spearman correlation, repeat-ийн дундаж."""
+    from scipy.stats import spearmanr
+    rows = {}
+    for m in models:
+        d = oof[oof.model == m]
+        rows[m] = np.mean([spearmanr(g.prob, g.effort)[0] for _, g in d.groupby("repeat")])
+    return pd.Series(rows, name="spearman_prob_effort")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--boot", type=int, default=2000)
@@ -191,6 +201,8 @@ def main():
     ranks_d.to_csv(out / "model_ranks_density.csv")
     winners = repeat_winners(folds, models)
     winners.to_csv(out / "repeat_winners.csv")
+    size_corr = size_correlation(oof, models)
+    size_corr.to_csv(out / "prob_effort_correlation.csv")
     ci, diff, n_ok = bootstrap(oof, models, args.boot, args.seed)
     ci.to_csv(out / "bootstrap_ci.csv", index=False)
     diff.to_csv(out / "bootstrap_diff.csv", index=False)
@@ -204,6 +216,8 @@ def main():
     print(ranks_d.to_string())
     print("\n=== repeat winners (out of 10 repeats) ===")
     print(winners.round(1).to_string())
+    print("\n=== Spearman(prob, effort) ===")
+    print(size_corr.round(3).to_string())
     print(f"\n=== Wilcoxon, model pairs: significant after Holm = "
           f"{int(mt.significant.sum())}/{len(mt)} ===")
     print(f"=== Wilcoxon, density vs probability: significant after Holm = "
