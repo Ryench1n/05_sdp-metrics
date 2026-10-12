@@ -8,3 +8,4 @@ venv/
 # Зөвхөн ant-1.7-г хадгална; бусдыг scripts/download_data.py-аар татна
 data/*.csv
 !data/ant-1.7.csv
+desktop.ini
