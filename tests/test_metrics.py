@@ -97,3 +97,38 @@ def test_nodes_loader_joins_loc_and_excludes_targets():
     assert not np.isnan(loc).any()
     assert not {"bug", "label", "loc"} & set(features)
     assert (y == (df["bug"] > 0)).all()
+
+
+# --- PofB budgets -----------------------------------------------------------
+
+def test_pofb_budgets_are_monotonic(toy):
+    y, prob, loc = toy
+    r = evaluate(y, (prob >= 0.5).astype(int), prob, loc)
+    assert r["PofB10"] <= r["PofB20"] <= r["PofB50"]
+
+
+# --- Statistics -------------------------------------------------------------
+
+def test_holm_matches_hand_computation():
+    from stats import holm
+    # sorted p: 0.01, 0.02, 0.04 -> 0.03, 0.04, 0.04
+    assert np.allclose(holm([0.04, 0.01, 0.02]), [0.04, 0.03, 0.04])
+
+
+def test_cliffs_delta_extremes_and_symmetry():
+    from stats import cliffs_delta
+    assert cliffs_delta([3, 4, 5], [0, 1, 2]) == 1.0
+    assert cliffs_delta([0, 1, 2], [3, 4, 5]) == -1.0
+    assert cliffs_delta([1, 2], [1, 2]) == 0.0
+
+
+def test_wilcoxon_identical_samples_not_significant():
+    from stats import wilcoxon_paired
+    stat, p = wilcoxon_paired([0.5] * 10, [0.5] * 10)
+    assert p == 1.0
+
+
+def test_percentile_ci_contains_center():
+    from stats import percentile_ci
+    lo, hi = percentile_ci(np.arange(1001))
+    assert lo == pytest.approx(25) and hi == pytest.approx(975)
