@@ -5,9 +5,9 @@ density) бүх хэмжүүрийг тооцоод, туршилтын тохи
 out-of-fold prediction-ийг автоматаар бүртгэнэ.
 
 Ажиллуулах:
-    python experiments/run_cv.py
+    python experiments/run_cv.py --dataset ant-1.7
 
-Гаралт: results/cv/
+Гаралт: results/cv/<dataset>/
     config.json   — тохиргоо, өгөгдлийн мэдээлэл, сангийн хувилбарууд, commit
     folds.csv     — fold бүрийн хэмжүүрүүд (repeat, fold, model, ranking)
     oof.csv.gz    — repeat бүрийн out-of-fold probability
@@ -29,7 +29,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from data import EFFORT, load              # noqa: E402
+from data import DATASETS, EFFORT, load    # noqa: E402
 from metrics import evaluate               # noqa: E402
 from models import MODEL_NAMES, make_model  # noqa: E402
 
@@ -46,19 +46,20 @@ def git_commit():
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--dataset", default="ant-1.7", choices=DATASETS)
     ap.add_argument("--repeats", type=int, default=10)
     ap.add_argument("--folds", type=int, default=10)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
-    X, y, effort, features, frame = load("ant-1.7")
-    out = ROOT / "results" / "cv"
+    X, y, effort, features, frame = load(args.dataset)
+    out = ROOT / "results" / "cv" / args.dataset
     out.mkdir(parents=True, exist_ok=True)
 
     config = {
         "started": datetime.now().isoformat(timespec="seconds"),
-        "dataset": "ant-1.7",
-        "data": "advisor nodes (tabular only)", "effort": EFFORT,
+        "dataset": args.dataset,
+        "data": "PROMISE CK (Jureczko & Madeyski)", "effort": EFFORT,
         "n_modules": int(len(y)), "n_defective": int(y.sum()), "n_features": len(features),
         "repeats": args.repeats, "folds": args.folds, "seed": args.seed,
         "split": "RepeatedStratifiedKFold(random_state=seed)",

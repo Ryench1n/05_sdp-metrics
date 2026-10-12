@@ -87,16 +87,15 @@ def test_ranking_change_leaves_decision_metrics_unchanged(toy):
 
 # --- Data loader ------------------------------------------------------------
 
-def test_loader_uses_csm_effort_and_excludes_targets():
-    from data import ADVISOR_DIR, load
-    if not (ADVISOR_DIR / "ant-1.7_nodes.csv").exists():
-        pytest.skip("advisor data not present")
+def test_loader_promise_datasets():
+    from data import DATA_DIR, DATASETS, load
+    if not all((DATA_DIR / f"{d}.csv").exists() for d in DATASETS):
+        pytest.skip("PROMISE data not present")
     X, y, effort, features, df = load("ant-1.7")
-    assert X.shape == (744, 62)
-    assert y.sum() == 165
-    assert (effort == df["NM"] + df["NA"]).all()
-    assert not {"bug", "label"} & set(features)
-    assert (y == (df["bug"] > 0)).all()
+    assert X.shape == (745, 20)
+    assert y.sum() == 166
+    assert "loc" in features and "bug" not in features
+    assert (effort == df["loc"]).all()
 
 
 # --- PofB budgets -----------------------------------------------------------

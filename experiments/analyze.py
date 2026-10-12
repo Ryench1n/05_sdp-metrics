@@ -12,7 +12,7 @@
 4. Загваруудын эрэмбэ: хэмжүүр бүрээр аль загвар хамгийн сайн гарч байгааг хоёр
    ranking-ийн аргаар харьцуулна; repeat бүрийн ялагчийг тоолж тогтвортой байдлыг шалгана.
 
-Ажиллуулах:  python experiments/analyze.py [--boot 2000]
+Ажиллуулах:  python experiments/analyze.py --dataset ant-1.7 [--boot 2000]
 """
 import argparse
 import itertools
@@ -180,11 +180,12 @@ def size_correlation(oof, models):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--dataset", default="ant-1.7")
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
-    out = ROOT / "results" / "cv"
+    out = ROOT / "results" / "cv" / args.dataset
     folds = pd.read_csv(out / "folds.csv")
     oof = pd.read_csv(out / "oof.csv.gz")
     models = list(dict.fromkeys(folds.model))
@@ -208,7 +209,7 @@ def main():
     diff.to_csv(out / "bootstrap_diff.csv", index=False)
 
     pd.set_option("display.width", 220)
-    print(f"=== mean over {folds.groupby(['repeat', 'fold']).ngroups} folds ===")
+    print(f"=== {args.dataset}: mean over {folds.groupby(['repeat', 'fold']).ngroups} folds ===")
     print(summary.xs("mean", axis=1, level=1).round(3).to_string())
     print("\n=== model ranks per metric (probability ranking; 1 = best) ===")
     print(ranks.to_string())
