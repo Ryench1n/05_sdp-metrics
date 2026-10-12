@@ -33,6 +33,7 @@ src/data.py      load() — багшийн өгөгдөл, effort = CSM
 experiments/     run_cv.py — үндсэн туршилт (10×10 CV, бүртгэлтэй)
                  analyze.py — статистик шинжилгээ
                  feasibility.py — threshold/ranking invariance, baseline-ууд
+                 figures.py — тайлангийн зургууд (results/figures/)
 tests/           unit, invariance, statistics, data loader test
 results/         туршилтын гаралт
 ```
@@ -48,6 +49,7 @@ python -m pytest -q                  # 14 test
 python experiments/feasibility.py    # ~10 сек
 python experiments/run_cv.py         # ~3 мин; results/cv/
 python experiments/analyze.py        # ~3 мин; статистик шинжилгээ
+python experiments/figures.py        # тайлангийн 4 зураг
 ```
 
 ## Үндсэн туршилт
