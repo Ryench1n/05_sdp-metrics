@@ -25,12 +25,16 @@
 ```
 data/            ant-1.7.csv (PROMISE), advisor/ (багшийн өгөгдөл, git-д ороогүй)
 scripts/         download_data.py — бусад 35 PROMISE санг татах
-src/metrics.py   10 хэмжүүр: Accuracy, Precision, Recall, F1, MCC, G-mean,
-                 ROC-AUC, PR-AUC, PofB20, IFA
+src/metrics.py   12 хэмжүүр: Accuracy, Precision, Recall, F1, MCC, G-mean,
+                 ROC-AUC, PR-AUC, PofB10, PofB20, PofB50, IFA
+src/models.py    LR, RF, ET (Extra Trees), XGB (XGBoost)
+src/stats.py     Wilcoxon, Holm засвар, Cliff's delta, bootstrap CI
 src/data.py      load_nodes() — багшийн өгөгдөл + LOC; load_ck() — PROMISE CK
-experiments/     feasibility.py — 2 загвар × threshold × ranking invariance туршилт
-tests/           unit, invariance, data loader test
-results/         туршилтын гаралт (CSV)
+experiments/     run_cv.py — үндсэн туршилт (10×10 CV, бүртгэлтэй)
+                 analyze.py — статистик шинжилгээ
+                 feasibility.py — урьдчилсан invariance туршилт (I явц)
+tests/           unit, invariance, statistics, data loader test
+results/         туршилтын гаралт
 ```
 
 ## Ажиллуулах
@@ -40,24 +44,41 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python -m pytest -q                # 9 test
-python experiments/feasibility.py  # results/feasibility_*.csv үүснэ
+python -m pytest -q                          # 14 test
+python experiments/run_cv.py                 # ~3 мин; results/cv_nodes/
+python experiments/analyze.py                # ~3 мин; статистик шинжилгээ
+python experiments/run_cv.py --feature-set ck && python experiments/analyze.py --feature-set ck
 ```
 
-## Одоогийн үр дүн (feasibility, үндсэн өгөгдөл)
+## Үндсэн туршилт
 
-Stratified 10-fold CV, `random_state=42`, threshold 0.5:
+- 10×10 repeated stratified cross-validation (`random_state=42`), загвар бүрийн seed = 42 + repeat.
+- 4 загвар (LR, RF, ET, XGB), гиперпараметр тохируулаагүй, ансамбль загварууд 300 tree.
+- Threshold 0.5; ranking: probability ба density (probability / LOC).
+- Fold бүрийн үр дүн, out-of-fold prediction, тохиргоо (`config.json`) автоматаар бүртгэгдэнэ.
 
-| Model | Ranking | F1 | MCC | ROC-AUC | PR-AUC | PofB20 | IFA |
-|---|---|---|---|---|---|---|---|
-| RF | probability | 0.561 | 0.484 | 0.834 | 0.640 | 0.140 | 0.0 |
-| RF | density | 0.561 | 0.484 | 0.525 | 0.232 | 0.320 | 6.9 |
-| LR | probability | 0.469 | 0.380 | 0.787 | 0.571 | 0.128 | 0.3 |
-| LR | density | 0.469 | 0.380 | 0.383 | 0.183 | 0.272 | 10.7 |
+Статистик шинжилгээ (`analyze.py`):
 
-- Threshold-ийг өөрчлөхөд зөвхөн decision-based хэмжүүрүүд өөрчлөгдөнө.
-- Ranking-ийн аргыг өөрчлөхөд зөвхөн ranking-based хэмжүүрүүд өөрчлөгдөнө; ROC-AUC буурч PofB20 өснө.
-- Энэ зүй тогтол хоёр загвар, хоёр feature set (багшийн 62 metric, PROMISE-ийн 20 CK metric)-ийн дөрвөн хослол бүгдэд давтагдсан.
+- **Wilcoxon signed-rank** (two-sided), repeat түвшний дундаж утгууд дээр (n = 10).
+  Нэг repeat доторх fold-ууд хамааралтай тул fold-ийн утгыг шууд ашиглаагүй.
+  Олон харьцуулалтад **Holm** засвар.
+- **Cliff's delta** effect size (fold түвшний утгууд дээр).
+- **Paired bootstrap 95% CI** (B = 2000): дээж бүрт repeat-ийг санамсаргүй сонгож,
+  модулиудыг буцаан тавих замаар түүвэрлэнэ. Бүх загвар ижил дээж дээр үнэлэгдэнэ.
+
+## Гол үр дүн (багшийн өгөгдөл, 100 fold-ийн дундаж)
+
+| Model | MCC | ROC-AUC | PR-AUC | PofB20 (prob.) | PofB20 (density) |
+|---|---|---|---|---|---|
+| LR | 0.391 | 0.797 | 0.593 | 0.142 | 0.274 |
+| RF | 0.431 | 0.836 | 0.636 | 0.151 | 0.329 |
+| ET | 0.403 | 0.831 | 0.620 | 0.158 | 0.337 |
+| XGB | 0.408 | 0.799 | 0.596 | 0.179 | 0.302 |
+
+- Хамгийн сайн загвар хэмжүүрээс хамаарна: RF нь Accuracy, MCC, ROC-AUC, PR-AUC-аар,
+  XGB нь F1, G-mean, PofB10/20/50-аар тэргүүлнэ.
+- Density ranking бүх загварт ROC-AUC, PR-AUC-ийг бууруулж, PofB-ийг өсгөж,
+  IFA-г нэмэгдүүлсэн (24/24 харьцуулалт Holm-ийн дараа p < 0.05, Cliff's delta их).
 
 ## Хэмжүүрийн тэмдэглэл
 
