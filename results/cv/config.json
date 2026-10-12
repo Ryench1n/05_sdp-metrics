@@ -1,10 +1,11 @@
 {
-  "started": "2026-10-12T01:54:00",
+  "started": "2026-10-12T02:36:01",
   "dataset": "ant-1.7",
-  "feature_set": "ck",
-  "n_modules": 745,
-  "n_defective": 166,
-  "n_features": 20,
+  "data": "advisor nodes (tabular only)",
+  "effort": "CSM",
+  "n_modules": 744,
+  "n_defective": 165,
+  "n_features": 62,
   "repeats": 10,
   "folds": 10,
   "seed": 42,
@@ -19,7 +20,7 @@
   "threshold": 0.5,
   "rankings": {
     "probability": "p",
-    "density": "p / max(LOC, 1)"
+    "density": "p / max(CSM, 1)"
   },
   "versions": {
     "python": "3.13.16",
@@ -28,7 +29,7 @@
     "scikit-learn": "1.9.1",
     "xgboost": "3.4.1"
   },
-  "git_commit": "312900d",
-  "finished": "2026-10-12T01:59:42",
-  "runtime_seconds": 342.1
+  "git_commit": "c93c723",
+  "finished": "2026-10-12T02:38:36",
+  "runtime_seconds": 154.9
 }

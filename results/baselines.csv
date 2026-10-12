@@ -1,0 +1,3 @@
+baseline,Accuracy,Precision,Recall,F1,MCC,G-mean,ROC-AUC,PR-AUC,PofB10,PofB20,PofB50,IFA
+dummy (all clean),0.7783,0.0,0.0,0.0,0.0,0.0,,,,,,
+size-only (CSM),0.6492,0.3703,0.8173,0.5083,0.3499,0.6987,0.7915,0.5575,0.0368,0.1338,0.4309,0.3
